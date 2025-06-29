@@ -1,0 +1,375 @@
+            // Variáveis globais
+            const today = new Date();
+            let currentMonth = today.getMonth();
+            let currentYear = today.getFullYear();
+            let selectedDate = today;
+            const tasks = {};
+            const comments = [];
+            const photos = [
+                { id: 1, description: 'Caminhada matinal', type: 'image' },
+                { id: 2, description: 'Almoço saudável', type: 'utensils' },
+                { id: 3, description: 'Leitura da tarde', type: 'book' }
+            ];
+            
+            // Elementos DOM
+            const calendarDays = document.getElementById('calendar-days');
+            const currentMonthElement = document.getElementById('current-month');
+            const prevMonthBtn = document.getElementById('prev-month');
+            const nextMonthBtn = document.getElementById('next-month');
+            const selectedDateElement = document.getElementById('selected-date');
+            const tasksContainer = document.getElementById('tasks-container');
+            const newTaskInput = document.getElementById('new-task');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const photoGallery = document.getElementById('photo-gallery');
+            const addPhotoBtn = document.getElementById('add-photo-btn');
+            const photoModal = document.getElementById('photo-modal');
+            const closePhotoModal = document.getElementById('close-photo-modal');
+            const savePhotoBtn = document.getElementById('save-photo');
+            const cancelPhotoBtn = document.getElementById('cancel-photo');
+            const photoDescription = document.getElementById('photo-description');
+            const commentsContainer = document.getElementById('comments-container');
+            const newCommentInput = document.getElementById('new-comment');
+            const addCommentBtn = document.getElementById('add-comment-btn');
+            const alertModal = document.getElementById('alert-modal');
+            const closeAlertBtn = document.getElementById('close-alert');
+            const alertMessage = document.getElementById('alert-message');
+            const shareBtn = document.getElementById('share-btn');
+            const shareModal = document.getElementById('share-modal');
+            const closeShareModal = document.getElementById('close-share-modal');
+            const copyLinkBtn = document.getElementById('copy-link');
+            const sendInviteBtn = document.getElementById('send-invite');
+            
+            // Inicialização
+            renderCalendar();
+            updateSelectedDateDisplay();
+            
+            // Event Listeners
+            prevMonthBtn.addEventListener('click', () => {
+                currentMonth--;
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear--;
+                }
+                renderCalendar();
+            });
+            
+            nextMonthBtn.addEventListener('click', () => {
+                currentMonth++;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+                renderCalendar();
+            });
+            
+            addTaskBtn.addEventListener('click', addTask);
+            newTaskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            
+            addPhotoBtn.addEventListener('click', () => {
+                photoModal.classList.remove('hidden');
+            });
+            
+            closePhotoModal.addEventListener('click', () => {
+                photoModal.classList.add('hidden');
+            });
+            
+            cancelPhotoBtn.addEventListener('click', () => {
+                photoModal.classList.add('hidden');
+            });
+            
+            savePhotoBtn.addEventListener('click', addPhoto);
+            
+            addCommentBtn.addEventListener('click', addComment);
+            newCommentInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addComment();
+            });
+            
+            closeAlertBtn.addEventListener('click', () => {
+                alertModal.classList.add('hidden');
+            });
+            
+            shareBtn.addEventListener('click', () => {
+                shareModal.classList.remove('hidden');
+            });
+            
+            closeShareModal.addEventListener('click', () => {
+                shareModal.classList.add('hidden');
+            });
+            
+            copyLinkBtn.addEventListener('click', () => {
+                const linkInput = document.querySelector('input[readonly]');
+                linkInput.select();
+                document.execCommand('copy');
+                
+                // Feedback visual
+                copyLinkBtn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    copyLinkBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                }, 2000);
+            });
+            
+            if (sendInviteBtn) {
+                sendInviteBtn.addEventListener('click', () => {
+                    const emailInput = document.getElementById('share-email');
+                    if (emailInput && emailInput.value.trim() !== '') {
+                        // Simulação de envio
+                        sendInviteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                        setTimeout(() => {
+                            sendInviteBtn.innerHTML = '<i class="fas fa-check"></i>';
+                            emailInput.value = '';
+                            setTimeout(() => {
+                                sendInviteBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                            }, 2000);
+                        }, 1500);
+                    }
+                });
+            }
+
+            // Funções
+            function renderCalendar() {
+                const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                
+                currentMonthElement.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+                
+                calendarDays.innerHTML = '';
+                
+                const firstDay = new Date(currentYear, currentMonth, 1);
+                const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                
+                const startingDayOfWeek = firstDay.getDay();
+                const daysInMonth = lastDay.getDate();
+                
+                // Dias do mês anterior
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'h-10 flex items-center justify-center text-gray-300 text-sm';
+                    calendarDays.appendChild(dayElement);
+                }
+                
+                // Dias do mês atual
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentYear, currentMonth, day);
+                    const dateString = formatDateKey(date);
+                    
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'h-10 flex items-center justify-center text-sm relative cursor-pointer';
+                    
+                    // Verificar se é o dia selecionado
+                    if (date.toDateString() === selectedDate.toDateString()) {
+                        dayElement.classList.add('bg-primary', 'text-white', 'rounded-full');
+                    } else {
+                        dayElement.classList.add('hover:bg-secondaryLight/20', 'rounded-full');
+                    }
+                    
+                    // Verificar se há tarefas para este dia
+                    if (tasks[dateString] && tasks[dateString].length > 0) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'absolute bottom-1 w-1 h-1 bg-secondary rounded-full';
+                        dayElement.appendChild(indicator);
+                    }
+                    
+                    dayElement.textContent = day;
+                    
+                    dayElement.addEventListener('click', () => {
+                        selectedDate = date;
+                        updateSelectedDateDisplay();
+                        renderTasks();
+                        renderCalendar();
+                    });
+                    
+                    calendarDays.appendChild(dayElement);
+                }
+            }
+            
+            function updateSelectedDateDisplay() {
+                const options = { weekday: 'long', day: 'numeric', month: 'long' };
+                selectedDateElement.textContent = selectedDate.toLocaleDateString('pt-BR', options);
+                renderTasks();
+            }
+            
+            function formatDateKey(date) {
+                return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+            }
+            
+            function renderTasks() {
+                tasksContainer.innerHTML = '';
+                const dateKey = formatDateKey(selectedDate);
+                
+                if (!tasks[dateKey] || tasks[dateKey].length === 0) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'text-center py-4 text-gray-500';
+                    emptyMessage.textContent = 'Nenhuma tarefa para hoje. Adicione uma!';
+                    tasksContainer.appendChild(emptyMessage);
+                    return;
+                }
+                
+                tasks[dateKey].forEach((task, index) => {
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'task-item flex items-center justify-between p-3 border-l-2 border-transparent bg-gray-50 rounded-lg';
+                    
+                    const leftSide = document.createElement('div');
+                    leftSide.className = 'flex items-center';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-checkbox h-5 w-5 text-secondary rounded';
+                    checkbox.checked = task.completed;
+                    checkbox.addEventListener('change', () => {
+                        task.completed = checkbox.checked;
+                        if (checkbox.checked) {
+                            taskText.classList.add('line-through', 'text-gray-400');
+                        } else {
+                            taskText.classList.remove('line-through', 'text-gray-400');
+                        }
+                    });
+                    
+                    const taskText = document.createElement('span');
+                    taskText.className = 'ml-3 text-gray-700';
+                    if (task.completed) {
+                        taskText.classList.add('line-through', 'text-gray-400');
+                    }
+                    taskText.textContent = task.text;
+                    
+                    leftSide.appendChild(checkbox);
+                    leftSide.appendChild(taskText);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'text-gray-400 hover:text-red-500';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                    deleteBtn.addEventListener('click', () => {
+                        tasks[dateKey].splice(index, 1);
+                        renderTasks();
+                        renderCalendar();
+                    });
+                    
+                    taskElement.appendChild(leftSide);
+                    taskElement.appendChild(deleteBtn);
+                    
+                    tasksContainer.appendChild(taskElement);
+                });
+            }
+            
+            function addTask() {
+                const taskText = newTaskInput.value.trim();
+                if (taskText === '') return;
+                
+                const dateKey = formatDateKey(selectedDate);
+                if (!tasks[dateKey]) {
+                    tasks[dateKey] = [];
+                }
+                
+                tasks[dateKey].push({
+                    text: taskText,
+                    completed: false
+                });
+                
+                newTaskInput.value = '';
+                renderTasks();
+                renderCalendar();
+                
+                // Simular alerta após alguns segundos
+                setTimeout(() => {
+                    showTaskAlert(taskText);
+                }, 5000);
+            }
+            
+            function addPhoto() {
+                const description = photoDescription.value.trim() || 'Nova foto';
+                
+                // Gerar um tipo aleatório para demonstração
+                const types = ['image', 'utensils', 'book', 'heart', 'star', 'coffee'];
+                const randomType = types[Math.floor(Math.random() * types.length)];
+                
+                const newPhoto = {
+                    id: photos.length + 1,
+                    description: description,
+                    type: randomType
+                };
+                
+                photos.push(newPhoto);
+                renderPhotos();
+                photoModal.classList.add('hidden');
+                photoDescription.value = '';
+            }
+            
+            function renderPhotos() {
+                photoGallery.innerHTML = '';
+                
+                photos.forEach(photo => {
+                    const photoElement = document.createElement('div');
+                    
+                    // Alternar entre os estilos de fundo para criar um padrão visual
+                    const bgClass = photo.id % 2 === 0 ? 'bg-secondaryLight/10' : 'bg-primaryLight/10';
+                    const iconClass = photo.id % 2 === 0 ? 'text-secondaryLight' : 'text-primaryLight';
+                    
+                    photoElement.className = `photo-item relative rounded-lg overflow-hidden ${bgClass} aspect-square flex items-center justify-center`;
+                    
+                    const iconElement = document.createElement('div');
+                    iconElement.className = `${iconClass} text-5xl`;
+                    iconElement.innerHTML = `<i class="fas fa-${photo.type}"></i>`;
+                    
+                    const captionElement = document.createElement('div');
+                    captionElement.className = 'absolute bottom-0 left-0 right-0 bg-primary bg-opacity-70 text-white p-2 text-xs';
+                    captionElement.textContent = photo.description;
+                    
+                    photoElement.appendChild(iconElement);
+                    photoElement.appendChild(captionElement);
+                    
+                    photoGallery.appendChild(photoElement);
+                });
+            }
+            
+            function addComment() {
+                const commentText = newCommentInput.value.trim();
+                if (commentText === '') return;
+                
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                
+                const names = ['Maria', 'Carolina', 'Juliana', 'Amanda', 'Luiza'];
+                const randomIndex = Math.floor(Math.random() * names.length);
+                const name = names[randomIndex];
+                const initial = name.charAt(0);
+                
+                // Alternar entre os estilos para criar variedade visual
+                const useSecondaryColor = Math.random() > 0.5;
+                const bgColorClass = useSecondaryColor ? 'bg-secondaryLight/20' : 'bg-primaryLight/20';
+                const textColorClass = useSecondaryColor ? 'text-secondary' : 'text-primary';
+                
+                const commentElement = document.createElement('div');
+                commentElement.className = 'flex space-x-3';
+                
+                commentElement.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full ${bgColorClass} flex items-center justify-center ${textColorClass}">
+                            ${initial}
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-50 rounded-lg p-3">
+                        <div class="flex justify-between items-start">
+                            <span class="font-medium text-sm text-gray-800">${name}</span>
+                            <span class="text-xs text-gray-400">${hours}:${minutes}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">${commentText}</p>
+                    </div>
+                `;
+                
+                commentsContainer.appendChild(commentElement);
+                newCommentInput.value = '';
+                
+                // Scroll para o último comentário
+                commentsContainer.scrollTop = commentsContainer.scrollHeight;
+            }
+            
+            function showTaskAlert(taskText) {
+                alertMessage.textContent = `É hora de completar sua tarefa: "${taskText}"`;
+                alertModal.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
